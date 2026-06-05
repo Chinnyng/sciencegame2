@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chiikawa 科學科大冒險</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', '微軟正黑體', sans-serif;
+            background-color: #fff0f5;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .game-container {
+            background-color: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            margin: 20px auto;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border: 3px solid #ffb6c1;
+            display: none; /* 預設隱藏，由 JS 控制顯示 */
+            position: relative;
+        }
+        h1 { color: #ff69b4; margin-bottom: 10px; }
+        
+        #login-screen { display: block; }
+        .login-input {
+            padding: 15px;
+            font-size: 1.2em;
+            border: 2px solid #dda0dd;
+            border-radius: 10px;
+            width: 80%;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            background-color: #ffe4e1;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .question { font-size: 1.2em; margin-bottom: 20px; text-align: left; line-height: 1.5; }
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        .option-btn {
+            background-color: #e6e6fa;
+            border: 2px solid #dda0dd;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: 0.3s;
+            text-align: left;
+        }
+        .option-btn:hover:not(:disabled) { background-color: #dda0dd; color: white; }
+        .selected-multiple { background-color: #b0e0e6; border-color: #4682b4; }
+
+        .btn {
+            background-color: #87cefa;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            font-size: 1em;
+        }
+        .btn-action { background-color: #ffb6c1; margin: 5px; }
+        .btn-action:hover { background-color: #ff69b4; }
+        .btn-start { background-color: #32cd32; font-size: 1.3em; padding: 15px 30px; margin: 10px;}
+        
+        .hint-text {
+            display: none;
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            color: #4682b4;
+            text-align: left;
+        }
+        #feedback { margin-top: 20px; font-weight: bold; font-size: 1.2em; min-height: 30px;}
+        
+        .list-item {
+            background-color: #fff5ee;
+            border-left: 5px solid #ff4500;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .correct-answer-text { color: #32cd32; font-weight: bold; margin-top: 10px;}
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border-bottom: 2px solid #ffe4e1; text-align: center; }
+        th { background-color: #ffb6c1; color: white; border-radius: 10px 10px 0 0; }
+        tr:nth-child(even) { background-color: #fff0f5; }
+
+        /* 小遊戲區域設計 */
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            background-color: #e0f8e0;
+            border: 3px dashed #32cd32;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .weed-target {
+            position: absolute;
+            font-size: 35px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+        .weed-target:active { transform: scale(0.8); }
+    </style>
+</head>
+<body>
+
+<div class="game-container" id="login-screen">
+    <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=chiikawa" width="100" alt="Avatar">
+    <h1>🌸 Chiikawa 大冒險 🌸</h1>
+    <h2>小四科學科挑戰賽</h2>
+    <p>請輸入你的名字準備出發：</p>
+    <input type="text" id="player-name-input" class="login-input" placeholder="例如：陳大文 (4A)" autocomplete="off">
+    <br>
+    <button class="btn btn-start" onclick="login()">開始遊戲 ➔</button>
+</div>
+
+<div class="game-container" id="main-game">
+    <h1>🌸 Chiikawa 大冒險 🌸</h1>
+    
+    <div class="status-bar">
+        <span>👤 玩家：<span id="display-name" style="color: #ff69b4;"></span></span>
+        <span>💰 金幣：<span id="coins">0</span></span>
+        <span style="width: 100%; margin-top: 10px; font-size: 0.9em;">
+            關卡：<span id="level-num">1</span> | 題號：<span id="q-num">1</span>
+        </span>
+    </div>
+    
+    <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px dashed #ffb6c1; padding-bottom: 15px;">
+        <button class="btn btn-action" onclick="showScreen('wrong-book')">📖 錯題本</button>
+        <button class="btn btn-action" style="background-color: #ffd700;" onclick="showScreen('leaderboard-screen')">🏆 排行榜</button>
+        <button class="btn btn-action" style="background-color: #ff6347; font-size: 0.8em; color: white;" onclick="resetMyProgress()">🔄 重設進度</button>
+        <button class="btn btn-action" style="background-color: #d3d3d3; font-size: 0.8em;" onclick="logout()">返回首頁</button>
+    </div>
+
+    <div id="quiz-area">
+        <div class="question" id="question-text">載入題目中...</div>
+        <div class="options" id="options-container"></div>
+
+        <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+            <button class="btn" onclick="toggleHint()">💡 小八貓提示</button>
+            <button class="btn" id="submit-btn" style="display:none; background-color: #ffa500;" onclick="submitMultipleChoice()">提交答案</button>
+            <button class="btn" id="next-btn" style="display:none; background-color: #32cd32;" onclick="nextQuestion()">下一題 ➔</button>
+        </div>
+        
+        <div class="hint-text" id="hint-text"></div>
+        <div id="feedback"></div>
+    </div>
+</div>
+
+<div class="game-container" id="mini-game-screen">
+    <h2 style="color: #32cd32;">🌿 拔草討伐時間！ 🌿</h2>
+    <p>兔哥發現了很多雜草和怪物！</p>
+    <p style="font-weight: bold; color: #ff4500;">限時 30 秒！快點擊牠們賺取額外金幣！</p>
+    <p style="font-size: 1.2em;">剩餘時間：<span id="timer" style="color: red; font-weight: bold;">30</span> 秒 | 賺取：<span id="mini-game-coins" style="color: #ff8c00; font-weight: bold;">0</span></p>
+    
+    <div id="game-area"></div>
+</div>
+
+<div class="game-container" id="level-complete-screen">
+    <h2 style="color: #ff69b4;">🎉 恭喜完成第 <span id="completed-level-display"></span> 關！ 🎉</h2>
+    <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=usagi" width="80" alt="Avatar">
+    <p>你表現得太棒了！進度已經為你自動保存。</p>
+    <p style="font-size: 1.2em;">目前累積金幣總數：<strong style="color: #ff8c00;" id="total-coins-display"></strong></p>
+    
+    <div style="margin-top: 30px;">
+        <button class="btn btn-start" onclick="continueToNextLevel()">⚔️ 繼續挑戰下一關</button>
+        <button class="btn btn-action" onclick="logout()" style="display: block; margin: 15px auto;">🏠 休息一下 (返回首頁)</button>
+        <button class="btn btn-action" onclick="showScreen('wrong-book')" style="background-color: #ffd700;">📖 睇睇錯題本</button>
+    </div>
+</div>
+
+<div class="game-container" id="wrong-book">
+    <h2 style="color: #ff4500;">📖 兔哥的錯題本 📖</h2>
+    <div id="wrong-list"></div>
+    <button class="btn btn-action" onclick="showScreen('main-game')">返回遊戲</button>
+</div>
+
+<div class="game-container" id="leaderboard-screen">
+    <h2 style="color: #ffd700;">🏆 討伐英雄榜 🏆</h2>
+    <table>
+        <thead>
+            <tr><th>排名</th><th>玩家姓名</th><th>💰 金幣</th><th>答對</th></tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+    </table>
+    <button class="btn btn-action" style="margin-top: 20px;" onclick="showScreen('main-game')">返回遊戲</button>
+</div>
+
+<script>
+// ==========================================
+// JSONBin.io 設定
+// ==========================================
+const BIN_ID = "6a22ee48da38895dfe8d0efd"; 
+const API_KEY = "$2a$10$sEcFHkGy.fQ7vXbSx/Xj6enD8LTM7S2.B89rk2AkaDNK5N7i3TKOC/zA0P.eSK";
+
+const allQuestions = [
+    // 單元一：認識地球
+    {
+        question: "以下哪項物品與地球的結構最相似？",
+        hint: "小八貓提示：地球分為地殼、地幔同地核三層，邊種食物都有類似嘅三層結構呢？",
+        options: ["西瓜。", "蘋果。", "熟雞蛋。", "乒乓球。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "地殼主要由甚麼構成？",
+        hint: "小八貓提示：地殼係地球最外層堅硬嘅部分。",
+        options: ["岩漿。", "岩石。", "泥土。", "沙子。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "地球的中心是甚麼？",
+        hint: "小八貓提示：地球最入面嗰層叫咩名？",
+        options: ["岩石。", "地殼。", "地幔。", "地核。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪項對地球結構的描述是正確的？",
+        hint: "小八貓提示：地球最中心嘅部分非常之熱！",
+        options: ["地殼是地球的中心。", "地核是地球的最外層。", "地幔主要由岩石構成。", "地核主要由金屬組成，温度極高。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪項對地球結構的描述是不正確的？",
+        hint: "小八貓提示：地核主要係由金屬組成，而唔係岩石喔。",
+        options: ["地核主要由岩石構成。", "地核是地球的中心，温度極高。", "地幔含有熾熱、會流動的岩漿。", "地殼是地球的最外層，並分為大小不同的板塊。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "地殼有甚麼特點？（答案可多於一個。）",
+        hint: "小八貓提示：地殼唔係一整塊的，而且佢會慢慢移動。",
+        options: ["地殼是完整一塊的。", "地殼分為大小不同的板塊。", "地幔內的岩漿流動，使板塊緩慢地移動。", "板塊移動和碰撞可能引發地震或火山爆發。"],
+        answer: [1, 2, 3],
+        type: "multiple"
+    },
+    {
+        question: "板塊移動和碰撞可能引致哪些自然現象？（答案可多於一個。）",
+        hint: "小八貓提示：想想地面震動同埋有岩漿噴出嚟嘅現象。",
+        options: ["暴雨。", "閃電。", "地震。", "火山爆發。"],
+        answer: [2, 3],
+        type: "multiple"
+    },
+    {
+        question: "玄武岩屬於哪個種類的岩石？",
+        hint: "小八貓提示：佢係由火山爆發後嘅岩漿冷卻而成嘅。",
+        options: ["火成岩。", "沉積岩。", "變質岩。", "以上皆不是。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "使用篩子篩分土壤，可以觀察土壤的甚麼特徵？",
+        hint: "小八貓提示：篩子上面有好多唔同大小嘅窿窿。",
+        options: ["含有水。", "含有空氣。", "顆粒大小。", "重量。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "在沙土、壤土和黏土中，哪一種土壤的顆粒最小？",
+        hint: "小八貓提示：呢種泥土通常用嚟做陶瓷，好滑㗎。",
+        options: ["沙土。", "壤土。", "黏土。", "不確定。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "在沙土、壤土和黏土三種土壤中，哪一種排水能力最好？",
+        hint: "小八貓提示：顆粒最大嘅泥土，啲水流得最快！",
+        options: ["沙土。", "壤土。", "黏土。", "不確定。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "如果用電筒代表太陽，照射代表地球的地球儀。當地球儀上的香港面向太陽、被光照亮時，以下哪個可能是香港正處於的時段？",
+        hint: "小八貓提示：面向太陽即係日頭！",
+        options: ["中午。", "傍晚。", "凌晨。", "不確定。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪些關於地球的描述是正確的？（答案可多於一個。）",
+        hint: "小八貓提示：地球會自轉，而且軸心係打斜嘅。",
+        options: ["地球自轉一周約需二十四小時。", "太陽是圍繞地球運行的。", "地球不停地自轉，形成白天和黑夜交替循環的現象。", "地球的假想地軸是傾斜的。"],
+        answer: [0, 2, 3],
+        type: "multiple"
+    },
+    {
+        question: "以下哪些關於地球自轉的描述是正確的？（答案可多於一個。）",
+        hint: "小八貓提示：地軸只係假想嘅，唔係真係有一支棍插喺地球中間喔。",
+        options: ["地球每天繞着地軸不停地轉動。", "地軸是真實存在的，它貫穿北極和南極。", "我們看到日出和日落，是地球自轉的結果。", "地球自轉一周，約需365天。"],
+        answer: [0, 2],
+        type: "multiple"
+    },
+    {
+        question: "以下哪項對地球的描述是不正確的？",
+        hint: "小八貓提示：地球中心嗰條軸線只係為咗方便理解而假想出嚟嘅。",
+        options: ["地軸是真實存在的。", "地球會不停地自轉。", "地球上，白天和黑夜有規律地重複。", "日與夜交替循環現象與地球不停自轉有關。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "地球自轉一周約需多久？",
+        hint: "小八貓提示：正好係一日嘅時間！",
+        options: ["十二小時。", "二十四小時。", "一個月。", "一年。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "從早上到中午，影子的長度會有甚麼變化？",
+        hint: "小八貓提示：太陽越升越高，影子會越嚟越點呢？",
+        options: ["漸漸變長。", "漸漸縮短。", "先變長再縮短。", "先縮短再變長。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪項關於地球繞着假想地軸自轉的描述是正確的？",
+        hint: "小八貓提示：地球轉動嘅方向同鐘錶指針行嘅方向相反。",
+        options: ["地球的假想地軸是垂直的。", "地球自轉一周需要一年。", "地球沿逆時針方向自轉。", "地球的自轉形成季節變化。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "地球公轉一周大約需要多長時間？",
+        hint: "小八貓提示：公轉一周就係過咗一年啦。",
+        options: ["一小時。", "一個月。", "一天。", "一年。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "當太陽直射北半球時，香港處於以下哪個季節？",
+        hint: "小八貓提示：陽光直射會好熱！",
+        options: ["春季。", "夏季。", "秋季。", "冬季。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "當太陽光斜射北半球時，香港處於甚麼季節？",
+        hint: "小八貓提示：斜射代表無咁熱，天氣凍。",
+        options: ["春季。", "夏季。", "秋季。", "冬季。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "當太陽光直射北半球時，位於南半球的墨爾本處於甚麼季節？",
+        hint: "小八貓提示：南北半球嘅季節係相反㗎。",
+        options: ["春季。", "夏季。", "秋季。", "冬季。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪項關於地球公轉的描述是正確的？",
+        hint: "小八貓提示：地球公轉係指地球圍住邊個天體轉？",
+        options: ["地球圍繞太陽公轉。", "地球圍繞太陽運行一周，約需二十四小時。", "地球公轉到不同位置時，南半球的温度保持不變。", "地球在公轉軌道上運行時，南、北半球受太陽照射的角度相同。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪項描述是正確的？",
+        hint: "小八貓提示：面向太陽就會有光亮！",
+        options: ["地球面向太陽的一面處於白天。", "地球自轉產生四季變化。", "地球公轉產生日夜交替。", "我們看到日出和日落，是因為地球圍繞太陽公轉。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "當香港是夏季，以下哪些地方也是夏季？（答案可多於一個。）",
+        hint: "小八貓提示：同香港一樣位於北半球或者赤道附近嘅地方。",
+        options: ["北京。", "上海。", "新加坡。", "坎培拉。"],
+        answer: [0, 1, 2],
+        type: "multiple"
+    },
+    {
+        question: "當香港是夏季，以下哪個地方是冬季？",
+        hint: "小八貓提示：呢個地方位於南半球（澳洲）。",
+        options: ["北京。", "上海。", "新加坡。", "坎培拉。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪個地方沒有明顯的四季？",
+        hint: "小八貓提示：呢個地方非常接近赤道，全年都好熱。",
+        options: ["北京。", "上海。", "新加坡。", "坎培拉。"],
+        answer: 2,
+        type: "single"
+    },
+
+    // 單元七：物質的特性和變化
+    {
+        question: "以下哪項是大部分金屬的特性？",
+        hint: "小八貓提示：想想不鏽鋼匙羹表面看起來是怎樣的。",
+        options: ["有彈性。", "透光。", "易碎。", "有光澤和反光。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪項是大部分金屬的特性？",
+        hint: "小八貓提示：金屬通常都唔容易爛。",
+        options: ["易碎。", "無光澤。", "堅硬。", "不導熱。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪項不是大部分金屬的特性？（答案可多於一個。）",
+        hint: "小八貓提示：金屬好硬，而且大部分都唔係黑色嘅。",
+        options: ["易碎。", "不透光。", "呈黑色。", "有光澤和反光。"],
+        answer: [0, 2],
+        type: "multiple"
+    },
+    {
+        question: "以下哪項物品能夠導電？",
+        hint: "小八貓提示：只有金屬先能夠導電！",
+        options: ["木棒。", "膠尺。", "銅線。", "紙張。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪些物品不能夠導電？（答案可多於一個。）",
+        hint: "小八貓提示：搵出唔係用金屬做嘅物品。",
+        options: ["鐵釘。", "橡皮。", "書釘。", "膠尺。"],
+        answer: [1, 3],
+        type: "multiple"
+    },
+    {
+        question: "以下哪些描述是不正確的？（答案可多於一個。）",
+        hint: "小八貓提示：金屬其實係非常好嘅導電體！",
+        options: ["金屬能夠導電。", "大部分非金屬不能夠導電。", "大部分金屬是絕緣體。", "金屬不是導電體。"],
+        answer: [2, 3],
+        type: "multiple"
+    },
+    {
+        question: "以下哪項描述是不正確的？",
+        hint: "小八貓提示：電線外層可以有好多唔同嘅顏色。",
+        options: ["電線外層是由塑膠製成的。", "電線是由不同的物料製成的。", "電線內層是由金屬製成的。", "電線外層都是藍色的。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪項物料適合製造電線外層？",
+        hint: "小八貓提示：外層需要防止觸電，所以要用絕緣體。",
+        options: ["銅。", "塑膠。", "鐵。", "鋁。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪些要用金屬製造？（答案可多於一個。）",
+        hint: "小八貓提示：邊啲部分需要通電？",
+        options: ["電插頭的插腳。", "電插頭的外殼。", "電線內層。", "電線外層。"],
+        answer: [0, 2],
+        type: "multiple"
+    },
+    {
+        question: "為甚麼電線內層不能用塑膠製造？（答案可多於一個。）",
+        hint: "小八貓提示：因為內層需要俾電流通過。",
+        options: ["因為塑膠是不良導熱體。", "因為塑膠不能夠導電。", "因為塑膠是絕緣體。", "因為塑膠不能有效導熱。"],
+        answer: [1, 2],
+        type: "multiple"
+    },
+    {
+        question: "為甚麼電線外層和電插頭的外殼要用塑膠製造？",
+        hint: "小八貓提示：為咗保護我哋安全使用電器。",
+        options: ["因為可以防止觸電。", "因為塑膠能有效隔熱。", "因為塑膠能有效導熱。", "因為塑膠是導電體。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪項物料是優良導熱體？",
+        hint: "小八貓提示：導熱最快嘅通常都係金屬。",
+        options: ["銅。", "木。", "布。", "塑膠。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪些物料是不良導熱體？（答案可多於一個。）",
+        hint: "小八貓提示：非金屬通常都係不良導熱體。",
+        options: ["木。", "布。", "銅。", "塑膠。"],
+        answer: [0, 1, 3],
+        type: "multiple"
+    },
+    {
+        question: "以下哪些物料適合製作隔熱用品？（答案可多於一個。）",
+        hint: "小八貓提示：要揀啲傳熱傳得慢嘅物料。",
+        options: ["木。", "布。", "塑膠。", "金屬。"],
+        answer: [0, 1, 2],
+        type: "multiple"
+    },
+    {
+        question: "為甚麼煮食鍋的鍋身用金屬製造？",
+        hint: "小八貓提示：為咗令食物快啲煮熟！",
+        options: ["因為金屬有光澤。", "因為金屬是不良導熱體。", "因為金屬不透光。", "因為金屬是優良導熱體。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "為甚麼一些水壺外會有一個膠杯套？",
+        hint: "小八貓提示：為咗防止倒熱水時燙傷手。",
+        options: ["因為塑膠是優良的導熱體。", "因為塑膠是不良的導熱體。", "因為塑膠能夠有效導熱。", "因為塑膠能夠導電。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪些物品所用的物料能有效隔熱？（答案可多於一個。）",
+        hint: "小八貓提示：金屬鍋傳熱好快，唔可以隔熱喔。",
+        options: ["木鏟。", "膠墊。", "金屬鍋。", "布質手套。"],
+        answer: [0, 1, 3],
+        type: "multiple"
+    },
+    {
+        question: "以下哪些物件的變化不會生成新物質？（答案可多於一個。）",
+        hint: "小八貓提示：只係形狀改變，本質無變嘅就係物理變化。",
+        options: ["拉長橡皮圈。", "擠壓泥膠。", "紙張燃燒。", "鐵釘生鏽。"],
+        answer: [0, 1],
+        type: "multiple"
+    },
+    {
+        question: "以下哪項物件的變化會生成新物質？",
+        hint: "小八貓提示：產生咗啡紅色嘅碎屑，已經唔再係原來嘅鐵。",
+        options: ["泥膠被擠壓。", "橡皮圈被拉長。", "鐵釘生鏽。", "玻璃被打碎。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪項物件的變化不會生成新物質？",
+        hint: "小八貓提示：形狀改變咗，但放手之後可能又變返原狀。",
+        options: ["草莓發霉。", "牛奶變質。", "枯葉腐爛。", "橡皮圈拉長。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪種情況會生成新物質？",
+        hint: "小八貓提示：燒過之後會變成灰燼，無法變回原狀。",
+        options: ["泥膠被擠壓。", "紙張燃燒。", "玻璃被打碎。", "冰塊融化。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪項變化是物理變化？",
+        hint: "小八貓提示：物理變化通常指狀態改變，例如由固體變液體。",
+        options: ["鐵釘生鏽。", "紙張燃燒。", "冰塊融化。", "枯葉腐爛。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪項變化是物理變化？",
+        hint: "小八貓提示：撕碎咗依然係紙，冇產生新東西。",
+        options: ["牛奶變質。", "把雞蛋煎熟。", "把紙張撕碎。", "鐵釘生鏽。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪項變化是化學變化？",
+        hint: "小八貓提示：燃燒會產生光、熱同煙，係化學變化。",
+        options: ["蠟燭熔化。", "蠟燭燃燒。", "紙張摺疊。", "水凝固。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "鐵釘生鏽後，會有甚麼變化？",
+        hint: "小八貓提示：生鏽後鐵釘表面會多咗一浸啡紅色嘅粉末。",
+        options: ["比較容易被磁鐵吸引。", "表面比較光滑。", "周圍會生成呈棕色的新物質。", "更有光澤。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "燃燒的蠟燭，其火焰底部發生了甚麼變化？",
+        hint: "小八貓提示：蠟燭既會受熱熔化（物理），亦會燃燒變成氣體（化學）。",
+        options: ["物理變化。", "化學變化。", "物理變化和化學變化。", "沒有變化。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪項變化是物理變化？",
+        hint: "小八貓提示：水蒸氣變回水滴，狀態改變。",
+        options: ["燃燒煤。", "燃燒石油。", "降雨。", "廚餘堆肥。"],
+        answer: 2,
+        type: "single"
+    },
+
+    // 單元九：航天與科技
+    {
+        question: "以下哪位是第一位進入太空的國家航天員？",
+        hint: "小八貓提示：乘坐「神舟五號」升空嘅英雄！",
+        options: ["楊利偉。", "翟志剛。", "劉洋。", "王亞平。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪位是第一位進行太空漫步的國家航天員？",
+        hint: "小八貓提示：佢乘坐「神舟七號」出艙揮動五星紅旗。",
+        options: ["楊利偉。", "翟志剛。", "劉洋。", "王亞平。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪些是乘坐「神舟十四號」升空的國家航天員？（答案可多於一個。）",
+        hint: "小八貓提示：翟志剛唔係今次任務嘅成員喔。",
+        options: ["翟志剛。", "陳冬。", "劉洋。", "蔡旭哲。"],
+        answer: [1, 2, 3],
+        type: "multiple"
+    },
+    {
+        question: "航天員在太空中睡覺時需要使用甚麼物品輔助？",
+        hint: "小八貓提示：要將自己固定好，免得漂來漂去。",
+        options: ["擠壓式飲品。", "睡袋。", "防刮太陽眼鏡。", "航天服。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "為甚麼航天員進食的時候，要閉口咀嚼和不說話？",
+        hint: "小八貓提示：太空中無重力，食物碎屑周圍飛會好麻煩。",
+        options: ["避免食物從口中掉出來，在太空艙內漂浮。", "仔細品嚐食物味道。", "節省氧氣供應。", "減少噪音，以免干擾其他航天員。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪項對航天員在太空生活的描述是不正確的？",
+        hint: "小八貓提示：太空人都需要每日做運動，防止肌肉萎縮㗎！",
+        options: ["進食時閉口不言。", "在太空艙內飄浮。", "睡覺時要固定身體。", "不可以在太空艙內運動。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "為甚麼航天員無法在太空艙中淋浴？",
+        hint: "小八貓提示：水喺無重狀態下唔會流落去。",
+        options: ["太空中沒有氣壓。", "水珠在失重狀態下會漂浮。", "太空艙裏沒有排污水的系統。", "避免漏電。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "太空中的環境與地球有甚麼不同？",
+        hint: "小八貓提示：太空有好多極速飛行嘅危險小碎石。",
+        options: ["太空有充足的氧氣。", "太空充滿高速飛行的微塵。", "太空的溫度變化很少。", "太空沒有輻射。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪項產品能幫助航天員在艙外工作？",
+        hint: "小八貓提示：可以全面保護航天員嘅特製服裝。",
+        options: ["氧氣面罩。", "滑翔衣。", "氣墊球鞋。", "航天服。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪項不是太空環境的特點？",
+        hint: "小八貓提示：太空向住太陽嘅地方極熱，背住太陽就極凍。",
+        options: ["沒有氧氣和氣壓。", "充滿高速飛行的微塵。", "有強烈的輻射。", "溫度變化少。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "航天服怎樣幫助航天員適應太空環境？（答案可多於一個。）",
+        hint: "小八貓提示：航天服唔係用嚟睡覺時固定身體㗎。",
+        options: ["能夠隔熱。", "阻擋太空的輻射和微塵。", "讓航天員在睡覺時固定身體。", "讓航天員可以呼吸。"],
+        answer: [0, 1, 3],
+        type: "multiple"
+    },
+    {
+        question: "以下哪項不是航天員面罩上的塗料的作用？",
+        hint: "小八貓提示：提供氧氣係靠航天服背後嘅設備，唔係靠面罩上嘅塗料。",
+        options: ["提供氧氣。", "阻隔輻射。", "防刮、防霧、易排水。", "減少水跡刮痕。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "航天員的頭盔有甚麼特點？（答案可多於一個。）",
+        hint: "小八貓提示：無提及過有特別嘅「塗料」塗喺成個頭盔度，塗料通常喺面罩上。",
+        options: ["能防碰撞。", "質量輕。", "有特殊的塗料。", "有良好的減震功能。"],
+        answer: [0, 1, 3],
+        type: "multiple"
+    },
+    {
+        question: "以下哪項是擠壓式飲品的用途？",
+        hint: "小八貓提示：為咗對抗無重力狀態。",
+        options: ["為飲料提升營養價值。", "增加飲料保質期。", "防止飲料在太空環境中飄浮。", "保持飲料的溫度。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪些產品能幫助航天員適應太空環境？（答案可多於一個。）",
+        hint: "小八貓提示：專為太空生活設計嘅裝備同食物包裝。",
+        options: ["智能電話。", "電燈。", "航天服。", "擠壓式飲品。"],
+        answer: [2, 3],
+        type: "multiple"
+    },
+    {
+        question: "以下哪些產品應用了太空科技？（答案可多於一個。）",
+        hint: "小八貓提示：盒裝飲品係平時地球上嘅普通設計。",
+        options: ["記憶枕。", "防刮太陽眼鏡。", "氣墊球鞋。", "盒裝飲品。"],
+        answer: [0, 1, 2],
+        type: "multiple"
+    },
+    {
+        question: "以下哪項是環繞地球並在空間軌道運行的無人航天器？",
+        hint: "小八貓提示：幫我哋做通訊同天氣預報嘅好幫手。",
+        options: ["人造衛星。", "航天飛機。", "火箭。", "飛機。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪些對人造衛星的描述是正確的？（答案可多於一個。）",
+        hint: "小八貓提示：人造衛星係無人操作嘅。",
+        options: ["是人造物體。", "需要航天員在裏面操作。", "圍繞地球並在空間軌道運行。", "所有人造衛星的功能都是一樣的。"],
+        answer: [0, 2],
+        type: "multiple"
+    },
+    {
+        question: "以下哪項不是人造衛星的用途？",
+        hint: "小八貓提示：目前嘅人造衛星仲未有能力回收太空垃圾。",
+        options: ["監察天氣。", "探索宇宙。", "回收太空垃圾。", "觀測地球環境和資源。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪項不是人造衛星的用途？",
+        hint: "小八貓提示：衛星喺天上，深海探測要靠潛水器。",
+        options: ["定位和導航。", "進行深海探測。", "監察天氣。", "探索宇宙。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪項是通訊衛星的用途？",
+        hint: "小八貓提示：負責傳遞信號俾我哋日常使用。",
+        options: ["拍攝氣象照片。", "提供機艙上網服務。", "進行月球採樣。", "探索宇宙。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪項是氣象衛星的用途？",
+        hint: "小八貓提示：天文台經常會用呢啲照片嚟預報天氣。",
+        options: ["汽車導航系統。", "提供機艙上網服務。", "拍攝氣象照片。", "觀測地球環境和資源。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪項是導航衛星的用途？",
+        hint: "小八貓提示：平時用手機地圖搵路就係靠佢。",
+        options: ["提供用户位置資訊。", "衛星電視直播。", "監察天氣。", "探索宇宙。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪項是地球觀測衛星的應用？",
+        hint: "小八貓提示：顧名思義，就係用嚟「觀測地球」嘅。",
+        options: ["定位和導航。", "提供機艙上網服務。", "拍攝氣象照片。", "觀測地球環境和資源。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪項是科學研究衛星的應用？",
+        hint: "小八貓提示：幫科學家發掘更多未知嘅奧秘。",
+        options: ["提供機艙上網服務。", "探索宇宙。", "汽車導航服務。", "傳送地球高空的氣象圖。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪些是通訊衛星的應用？（答案可多於一個。）",
+        hint: "小八貓提示：傳送網絡信號同埋電視節目訊號。",
+        options: ["提供機艙上網服務。", "衛星電視直播。", "汽車導航系統。", "傳送地球高空的氣象圖。"],
+        answer: [0, 1],
+        type: "multiple"
+    },
+    {
+        question: "國家第一枚人造衛星的名稱是甚麼？",
+        hint: "小八貓提示：佢會喺太空播放同名嘅歌曲。",
+        options: ["「東方紅一號」。", "「北斗一號」。", "「天問一號」。", "「實踐一號」。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "國家第一枚人造衛星「東方紅一號」在哪一年成功發射？",
+        hint: "小八貓提示：係上世紀70年代嘅事。",
+        options: ["2001年。", "1988年。", "1970年。", "1965年。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "我國在哪一年成為世界上第三個獨立開展載人航天的國家？",
+        hint: "小八貓提示：楊利偉就係喺呢一年乘坐神舟五號升空嘅。",
+        options: ["1970年。", "2008年。", "2011年。", "2003年。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "「神舟七號」升空對國家的航天科技發展有甚麼重大意義？",
+        hint: "小八貓提示：太空人第一次離開太空艙去外面。",
+        options: ["首次有國家航天員進行艙外活動。", "國家第一枚人造衛星發射成功。", "國家首個太空實驗室升空。", "國家首次繞月拍攝高清照片。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "國家首顆用於月球探測的人造衛星的名稱是甚麼？",
+        hint: "小八貓提示：以中國神話中飛向月亮嘅仙女命名。",
+        options: ["「東方紅一號」。", "「嫦娥一號」。", "「天問一號」。", "「實踐一號」。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "在2013年成功登月的國家探月車的名稱是甚麼？",
+        hint: "小八貓提示：月宮裏面陪住嫦娥嘅小動物。",
+        options: ["「天問一號」。", "「嫦娥一號」。", "「玉兔號」。", "「祝融號」。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "「嫦娥一號」發射成功對國家的航天科技發展有甚麼重大意義？",
+        hint: "小八貓提示：為我哋帶嚟清晰嘅月球表面樣貌。",
+        options: ["首次有國家航天員進行艙外活動。", "國家第一枚人造衛星發射成功。", "國家首個太空實驗室升空。", "國家首次繞月拍攝高清照片。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "以下哪個航天器成功從月球採集樣品帶回地球？",
+        hint: "小八貓提示：係「嫦娥」系列嘅第五位成員。",
+        options: ["「玉兔號」。", "「嫦娥一號」。", "「嫦娥五號」。", "「天問一號」。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "「天宮空間站」由幾個艙段组成？",
+        hint: "小八貓提示：包括天和核心艙、問天實驗艙同夢天實驗艙。",
+        options: ["1個。", "2個。", "3個。", "4個。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "國際民航組織官方認證國家的哪個系統為全球民航導航系統標準之一？",
+        hint: "小八貓提示：以天上指示方向嘅星斗命名。",
+        options: ["「星鏈衛星導航系統」。", "「北斗衛星導航系統」。", "「準天頂衛星導航系統」。", "「東方紅衛星導航系統」。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪項是「天宮空間站」的航天科技任務？",
+        hint: "小八貓提示：空間站係用嚟同其他國家一齊做科學研究嘅。",
+        options: ["作為全球民航導航系統標準之一。", "展開國際合作研究項目。", "獲取不同的火星影像。", "繞月拍攝高清照片。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "「嫦娥六號」發射成功對國家的航天科技發展有甚麼重大意義？",
+        hint: "小八貓提示：去咗月球大家平時睇唔到嘅嗰一面掘泥土。",
+        options: ["世界首次月球背面採樣。", "世界首次月球正面採樣。", "國家首次從月球採樣。", "國家首次繞月拍攝高清照片。"],
+        answer: 0,
+        type: "single"
+    },
+    {
+        question: "以下哪項是我國深空探索方面的航天科技？",
+        hint: "小八貓提示：去月球甚至更遠嘅地方探索。",
+        options: ["「神舟七號」。", "「嫦娥六號」。", "「東方紅一號」。", "「北斗衛星導航系统」。"],
+        answer: 1,
+        type: "single"
+    },
+    {
+        question: "以下哪一項是我國載人航天方面的航天科技？",
+        hint: "小八貓提示：太空人可以喺裏面長期居住同做實驗嘅地方。",
+        options: ["「玉兔號」。", "「嫦娥一號」。", "「天宮空間站」。", "「東方紅一號」。"],
+        answer: 2,
+        type: "single"
+    },
+    {
+        question: "以下哪一項是我國人造衛星方面的航天科技？",
+        hint: "小八貓提示：負責幫大家導航同定位嘅系統。",
+        options: ["「神舟五號」。", "「嫦娥五號」。", "「天宮一號」。", "「北斗衛星導航系統」。"],
+        answer: 3,
+        type: "single"
+    },
+    {
+        question: "我國研發了甚麼航天科技，成為第二個成功登陸火星的國家？",
+        hint: "小八貓提示：帶住「祝融號」火星車去探險嘅航天器。",
+        options: ["「玉兔號」。", "「嫦娥一號」。", "「天宮一號」。", "「天問一號」。"],
+        answer: 3,
+        type: "single"
+    }
+];
+
+    let currentPlayer = "";
+    let currentQuestionIndex = 0;
+    let coins = 0;
+    let wrongQuestions = [];
+    let selectedOptions = [];
+    let correctCount = 0; 
+    let weedInterval;
+    let timerInterval;
+    let currentMiniGameCoins = 0;
+
+    // 畫面切換邏輯
+    function showScreen(screenId) {
+        const screens = ['login-screen', 'main-game', 'mini-game-screen', 'level-complete-screen', 'wrong-book', 'leaderboard-screen'];
+        screens.forEach(id => document.getElementById(id).style.display = 'none');
+        document.getElementById(screenId).style.display = 'block';
+        
+        if(screenId === 'wrong-book') renderWrongBook();
+        if(screenId === 'leaderboard-screen') renderLeaderboard();
+    }
+
+    async function login() {
+        const nameInput = document.getElementById('player-name-input').value.trim();
+        if (nameInput === "") { alert("請先輸入你的名字喔！"); return; }
+        
+        document.getElementById('login-screen').innerHTML += "<p style='color:blue;' id='loading-text'>🔄 正在同步雲端數據...</p>";
+        currentPlayer = nameInput;
+        document.getElementById('display-name').innerText = currentPlayer;
+        
+        // 1. 嘗試載入本地進度
+        loadPlayerProgress();
+
+        // 2. 嘗試從 JSONBin 雲端同步最高金幣 (防止換機或洗機時金幣變 0)
+        try {
+            let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            let result = await response.json();
+            let boardData = result.record || [];
+            
+            // 尋找雲端上有沒有這個玩家的記錄
+            let cloudPlayer = boardData.find(p => p.name === currentPlayer);
+            
+            // 如果雲端的金幣比本地多（例如他在另一部機玩過），就用雲端的高分覆蓋本地
+            if (cloudPlayer && cloudPlayer.coins > coins) {
+                coins = cloudPlayer.coins;
+                correctCount = cloudPlayer.correctCount;
+                saveProgress(); // 更新本地儲存
+            }
+        } catch(e) {
+            console.log("雲端同步延遲，使用本地數據");
+        }
+
+        // 恢復登入畫面原狀並進入遊戲
+        let loadingText = document.getElementById('loading-text');
+        if(loadingText) loadingText.remove();
+        showScreen('main-game');
+        loadQuestion();
+    }
+
+    function logout() {
+        currentPlayer = "";
+        document.getElementById('player-name-input').value = "";
+        showScreen('login-screen');
+    }
+
+    function loadPlayerProgress() {
+        const savedData = localStorage.getItem('chiikawa_data_' + currentPlayer);
+        if (savedData) {
+            const data = JSON.parse(savedData);
+            currentQuestionIndex = data.currentQuestionIndex || 0;
+            coins = data.coins || 0;
+            correctCount = data.correctCount || 0;
+            wrongQuestions = data.wrongQuestions || [];
+        } else {
+            currentQuestionIndex = 0; coins = 0; correctCount = 0; wrongQuestions = [];
+        }
+        updateUI();
+    }
+
+    function saveProgress() {
+        const data = { currentQuestionIndex, coins, correctCount, wrongQuestions };
+        localStorage.setItem('chiikawa_data_' + currentPlayer, JSON.stringify(data));
+        updateLeaderboardData();
+    }
+
+    // 1. 將分數上傳到 JSONBin.io
+    async function updateLeaderboardData() {
+        try {
+            // 第一步：先從雲端下載最新的全班排行榜
+            let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            let result = await response.json();
+            let boardData = result.record || [];
+
+            // 第二步：更新當前玩家的分數
+            let playerIndex = boardData.findIndex(p => p.name === currentPlayer);
+            if (playerIndex !== -1) {
+                boardData[playerIndex].coins = coins;
+                boardData[playerIndex].correctCount = correctCount;
+            } else {
+                boardData.push({ name: currentPlayer, coins: coins, correctCount: correctCount });
+            }
+
+            // 第三步：將更新後的排行榜重新上傳到雲端
+            await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify(boardData)
+            });
+            console.log("分數已成功同步至 JSONBin！");
+        } catch (error) {
+            console.error('同步失敗:', error);
+        }
+    }
+
+    // 2. 從 JSONBin.io 下載全班排行榜
+    async function renderLeaderboard() {
+        const tbody = document.getElementById('leaderboard-body');
+        tbody.innerHTML = '<tr><td colspan="4">努力載入全班排名中... 🐰</td></tr>'; // 載入提示
+
+        try {
+            let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            let result = await response.json();
+            let boardData = result.record || [];
+
+            // 根據金幣從高到低排序
+            boardData.sort((a, b) => b.coins - a.coins);
+            
+            tbody.innerHTML = '';
+            
+            if (boardData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">目前還沒有英雄上榜喔！</td></tr>';
+                return;
+            }
+
+            boardData.forEach((player, index) => {
+                const tr = document.createElement('tr');
+                let rankClass = '';
+                let rankText = index + 1;
+                
+                if (index === 0) { rankClass = 'rank-1'; rankText = '🥇 1'; }
+                else if (index === 1) { rankClass = 'rank-2'; rankText = '🥈 2'; }
+                else if (index === 2) { rankClass = 'rank-3'; rankText = '🥉 3'; }
+
+                // 如果是當前玩家，Highlight 顯示
+                if (player.name === currentPlayer) tr.style.backgroundColor = '#fffacd';
+
+                tr.innerHTML = `
+                    <td class="${rankClass}">${rankText}</td>
+                    <td style="font-weight: bold;">${player.name}</td>
+                    <td style="color: #ff8c00; font-weight: bold;">${player.coins}</td>
+                    <td>答對 ${player.correctCount} 題</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            console.error('讀取排行榜失敗:', error);
+            tbody.innerHTML = '<tr><td colspan="4" style="color:red;">網絡連線錯誤，無法載入排行榜 💦</td></tr>';
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('coins').innerText = coins;
+        let level = Math.floor(currentQuestionIndex / 20) + 1;
+        document.getElementById('level-num').innerText = level;
+    }
+
+    function loadQuestion() {
+        // 如果已經做完所有題目，顯示「再次挑戰」按鈕
+        if (currentQuestionIndex >= allQuestions.length) {
+            document.getElementById('quiz-area').innerHTML = `
+                <h2 style="color: #ff69b4;">🏆 恭喜你！完成所有題目！</h2>
+                <p>你目前總共累積了 <strong>${coins}</strong> 個金幣！</p>
+                <div style="margin-top: 30px;">
+                    <button class="btn btn-action" style="background-color: #ffd700;" onclick="showScreen('leaderboard-screen')">🏆 查看排行榜</button>
+                    <br><br>
+                    <button class="btn btn-start" onclick="replayGame()">🔄 再次挑戰 (繼續累積金幣！)</button>
+                </div>
+            `;
+            return;
+        }
+
+        const q = allQuestions[currentQuestionIndex];
+        document.getElementById('q-num').innerText = currentQuestionIndex + 1;
+        
+        let qText = q.question;
+        if(q.type === "multiple") qText += " <span style='color: #ff8c00; font-size:0.8em;'>(多選題)</span>";
+        document.getElementById('question-text').innerHTML = qText;
+        
+        document.getElementById('hint-text').innerText = q.hint;
+        document.getElementById('hint-text').style.display = 'none';
+        document.getElementById('feedback').innerText = '';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('submit-btn').style.display = q.type === "multiple" ? 'inline-block' : 'none';
+        selectedOptions = [];
+
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = ''; 
+
+        q.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.id = 'opt-' + index;
+            if(q.type === "single") btn.onclick = () => checkSingleAnswer(index, btn);
+            else btn.onclick = () => toggleMultipleSelection(index, btn);
+            optionsContainer.appendChild(btn);
+        });
+        
+        saveProgress();
+        updateUI();
+    }
+
+    // 新增的「無限重玩」功能
+    function replayGame() {
+        // 關鍵：重設題號，清空錯題本，但【絕對保留】金幣同答對總數！
+        currentQuestionIndex = 0;
+        wrongQuestions = [];
+        selectedOptions = [];
+        
+        saveProgress(); // 儲存進度
+        loadQuestion(); // 重新載入第一題
+    }
+
+    function checkSingleAnswer(selectedIndex, btn) {
+        const q = allQuestions[currentQuestionIndex];
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.disabled = true);
+
+        if (selectedIndex === q.answer) {
+            btn.style.backgroundColor = '#98fb98';
+            document.getElementById('feedback').innerHTML = "✨ 答對了！ +10 金幣";
+            document.getElementById('feedback').style.color = "green";
+            coins += 10; correctCount++;
+        } else {
+            btn.style.backgroundColor = '#ffb6c1';
+            buttons[q.answer].style.backgroundColor = '#98fb98';
+            document.getElementById('feedback').innerHTML = "💦 答錯了，已記錄在錯題本。";
+            document.getElementById('feedback').style.color = "red";
+            recordWrongQuestion(q);
+        }
+        saveProgress();
+        updateUI();
+        document.getElementById('next-btn').style.display = 'inline-block';
+    }
+
+    function toggleMultipleSelection(index, btn) {
+        if(selectedOptions.includes(index)) {
+            selectedOptions = selectedOptions.filter(i => i !== index);
+            btn.classList.remove('selected-multiple');
+        } else {
+            selectedOptions.push(index);
+            btn.classList.add('selected-multiple');
+        }
+    }
+
+    function submitMultipleChoice() {
+        if(selectedOptions.length === 0) return;
+        const q = allQuestions[currentQuestionIndex];
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.disabled = true);
+        document.getElementById('submit-btn').style.display = 'none';
+
+        let isCorrect = JSON.stringify(selectedOptions.sort()) === JSON.stringify(q.answer.sort());
+
+        if (isCorrect) {
+            selectedOptions.forEach(idx => document.getElementById('opt-' + idx).style.backgroundColor = '#98fb98');
+            document.getElementById('feedback').innerHTML = "✨ 全中！太棒了！ +10 金幣";
+            document.getElementById('feedback').style.color = "green";
+            coins += 10; correctCount++;
+        } else {
+            selectedOptions.forEach(idx => document.getElementById('opt-' + idx).style.backgroundColor = '#ffb6c1');
+            q.answer.forEach(idx => document.getElementById('opt-' + idx).style.backgroundColor = '#98fb98');
+            document.getElementById('feedback').innerHTML = "💦 答案不完全正確，已記錄在錯題本。";
+            document.getElementById('feedback').style.color = "red";
+            recordWrongQuestion(q);
+        }
+        saveProgress();
+        updateUI();
+        document.getElementById('next-btn').style.display = 'inline-block';
+    }
+
+    function recordWrongQuestion(q) {
+        if (!wrongQuestions.some(wq => wq.question === q.question)) wrongQuestions.push(q);
+    }
+
+    function toggleHint() {
+        const hintEl = document.getElementById('hint-text');
+        hintEl.style.display = hintEl.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // ========== 核心過關與小遊戲邏輯 ========== //
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        
+        // 檢查是否剛好完成 20 題 (一關)
+        if (currentQuestionIndex > 0 && currentQuestionIndex % 20 === 0 && currentQuestionIndex < allQuestions.length) {
+            startMiniGame(); // 進入除草小遊戲
+        } else {
+            loadQuestion(); // 繼續一般題目
+        }
+    }
+
+    function startMiniGame() {
+        showScreen('mini-game-screen');
+        currentMiniGameCoins = 0;
+        let timeLeft = 30;
+        
+        document.getElementById('timer').innerText = timeLeft;
+        document.getElementById('mini-game-coins').innerText = currentMiniGameCoins;
+        document.getElementById('game-area').innerHTML = ''; // 清空場地
+
+        // 每 0.6 秒彈出一棵草/怪物
+        weedInterval = setInterval(spawnWeed, 600);
+        
+        // 倒數計時
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer').innerText = timeLeft;
+            if (timeLeft <= 0) {
+                endMiniGame();
+            }
+        }, 1000);
+    }
+
+    function spawnWeed() {
+        const area = document.getElementById('game-area');
+        const weed = document.createElement('div');
+        
+        // 隨機出現草 (🌿) 或 怪物 (👾)
+        const isMonster = Math.random() > 0.8; 
+        weed.innerText = isMonster ? '👾' : '🌿';
+        weed.className = 'weed-target';
+        
+        // 隨機位置
+        weed.style.left = Math.random() * 85 + '%';
+        weed.style.top = Math.random() * 80 + '%';
+        
+        // 點擊事件
+        weed.onclick = function() {
+            let reward = isMonster ? 5 : 2; // 怪物值 5 金幣，草值 2 金幣
+            currentMiniGameCoins += reward;
+            coins += reward; // 增加全球金幣
+            document.getElementById('mini-game-coins').innerText = currentMiniGameCoins;
+            
+            weed.innerText = '💥'; // 爆炸效果
+            weed.style.pointerEvents = 'none'; // 避免重複點擊
+            setTimeout(() => weed.remove(), 200);
+        };
+        
+        area.appendChild(weed);
+        
+        // 如果 1.5 秒內無人點擊，自動消失
+        setTimeout(() => {
+            if(weed.parentElement) weed.remove();
+        }, 1500);
+    }
+
+    function endMiniGame() {
+        clearInterval(weedInterval);
+        clearInterval(timerInterval);
+        document.getElementById('game-area').innerHTML = '';
+        
+        alert(`⏰ 時間到！\n兔哥幫你喺草叢中討伐成功，額外賺到 ${currentMiniGameCoins} 個金幣！`);
+        saveProgress();
+        showLevelCompleteScreen();
+    }
+
+    function showLevelCompleteScreen() {
+        showScreen('level-complete-screen');
+        let completedLevel = currentQuestionIndex / 20;
+        document.getElementById('completed-level-display').innerText = completedLevel;
+        document.getElementById('total-coins-display').innerText = coins;
+    }
+
+    function continueToNextLevel() {
+        showScreen('main-game');
+        loadQuestion();
+    }
+
+    // ========== 錯題本渲染 ========== //
+    function renderWrongBook() {
+        const list = document.getElementById('wrong-list');
+        if (wrongQuestions.length === 0) {
+            list.innerHTML = "<p style='text-align:center;'>太厲害了！目前沒有錯題記錄喔！✨</p>";
+            return;
+        }
+        list.innerHTML = '';
+        wrongQuestions.forEach((q, index) => {
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            let correctText = q.type === "single" ? q.options[q.answer] : q.answer.map(idx => q.options[idx]).join(' , ');
+            item.innerHTML = `<p><strong>Q${index + 1}: ${q.question}</strong></p><div class="correct-answer-text">✅ 正確答案：${correctText}</div><p style="font-size: 0.9em; color: #666; margin-top: 5px;">💡 ${q.hint}</p>`;
+            list.appendChild(item);
+        });
+    }
+
+    // 新增：重設個人進度功能 (方便老師測試)
+    function resetMyProgress() {
+        if(confirm("警告：確定要清除所有進度，重新由第一關開始嗎？\n（你的金幣和錯題本也會清零喔！）")) {
+            // 清除瀏覽器中這個玩家的紀錄
+            localStorage.removeItem('chiikawa_data_' + currentPlayer);
+            
+            // 將所有分數重設為 0
+            currentQuestionIndex = 0;
+            coins = 0;
+            correctCount = 0;
+            wrongQuestions = [];
+            selectedOptions = [];
+            
+            // 儲存並重新載入畫面
+            saveProgress(); 
+            loadQuestion();
+        }
+    }
+</script>
+
+</body>
+</html>
