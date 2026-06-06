@@ -213,7 +213,7 @@
 
 <script>
 // ==========================================
-// JSONBin.io 設定
+// JSONBin.io 設定 (科學科專用)
 // ==========================================
 const BIN_ID = "6a22ee48da38895dfe8d0efd"; 
 const API_KEY = "$2a$10$sEcFHkGy.fQ7vXbSx/Xj6enD8LTM7S2.B89rk2AkaDNK5N7i3TKOC/zA0P.eSK";
@@ -1117,15 +1117,30 @@ const allQuestions = [
         updateUI();
     }
 
-    // 新增的「無限重玩」功能
+    // 新增的「無限重玩」功能 (已修復保留錯題及卡死問題)
     function replayGame() {
-        // 關鍵：重設題號，清空錯題本，但【絕對保留】金幣同答對總數！
+        // 1. 重設題號，保留金幣
         currentQuestionIndex = 0;
-        wrongQuestions = [];
         selectedOptions = [];
         
-        saveProgress(); // 儲存進度
-        loadQuestion(); // 重新載入第一題
+        // ⚠️ 已經移除了 wrongQuestions = []; 這樣就能永遠保留錯題本！
+
+        // 2. 修復卡死 Bug：重新建立被「恭喜畫面」覆蓋了的題目 HTML 結構
+        document.getElementById('quiz-area').innerHTML = `
+            <div class="question" id="question-text">載入題目中...</div>
+            <div class="options" id="options-container"></div>
+            <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <button class="btn" onclick="toggleHint()">💡 小八貓提示</button>
+                <button class="btn" id="submit-btn" style="display:none; background-color: #ffa500;" onclick="submitMultipleChoice()">提交答案</button>
+                <button class="btn" id="next-btn" style="display:none; background-color: #32cd32;" onclick="nextQuestion()">下一題 ➔</button>
+            </div>
+            <div class="hint-text" id="hint-text"></div>
+            <div id="feedback"></div>
+        `;
+        
+        // 3. 儲存進度並重新載入第一題
+        saveProgress(); 
+        loadQuestion(); 
     }
 
     function checkSingleAnswer(selectedIndex, btn) {
