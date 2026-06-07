@@ -898,6 +898,13 @@ const allQuestions = [
     }
 ];
 
+// ==========================================
+// ✅ 自動隨機打亂題目順序 (洗牌魔法)
+// ==========================================
+for (let i = allQuestions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+}
     // ✅ 分開兩科的 Local Storage 名稱，防止污染！
     const LOCAL_STORAGE_KEY = 'chiikawa_sci_data_';
 
