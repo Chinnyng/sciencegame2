@@ -21,7 +21,7 @@
             margin: 20px auto;
             box-shadow: 0 8px 16px rgba(0,0,0,0.1);
             border: 3px solid #ffb6c1;
-            display: none; 
+            display: none; /* 預設隱藏，由 JS 控制顯示 */
             position: relative;
         }
         h1 { color: #ff69b4; margin-bottom: 10px; }
@@ -215,8 +215,8 @@
 // ==========================================
 // JSONBin.io 設定 (科學科專用)
 // ==========================================
-const BIN_ID = "6a22ee48da38895dfe8d0efd"; 
-const API_KEY = "$2a$10$NHz7MKdFHSHQeYasT0JRFetebsuvEmQ1n2XHGwt7kssp/zA0P.eSK";
+const BIN_ID = "6a24dd7dda38895dfe933e0f"; 
+const API_KEY = "$2a$10$kDJUBR6y3cVqcUESr5W8/O9Qnd0jQgXLNk.2mNU5EOuhmochXZCFm";
 
 const allQuestions = [
     // 單元一：認識地球
@@ -935,7 +935,7 @@ const allQuestions = [
         // 2. 嘗試從 JSONBin 雲端同步最高金幣
         try {
             let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-                headers: { 'X-Master-Key': API_KEY }
+                headers: { 'X-Access-Key': API_KEY } // ✅ 已修復
             });
             let result = await response.json();
             let boardData = result.record || [];
@@ -989,7 +989,7 @@ const allQuestions = [
     async function updateLeaderboardData() {
         try {
             let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-                headers: { 'X-Master-Key': API_KEY }
+                headers: { 'X-Access-Key': API_KEY }
             });
             let result = await response.json();
             let boardData = result.record || [];
@@ -1006,7 +1006,7 @@ const allQuestions = [
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Master-Key': API_KEY
+                    'X-Access-Key': API_KEY
                 },
                 body: JSON.stringify(boardData)
             });
@@ -1023,7 +1023,7 @@ const allQuestions = [
 
         try {
             let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-                headers: { 'X-Master-Key': API_KEY }
+                headers: { 'X-Access-Key': API_KEY }
             });
             let result = await response.json();
             let boardData = result.record || [];
