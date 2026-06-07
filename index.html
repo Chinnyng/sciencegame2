@@ -21,7 +21,7 @@
             margin: 20px auto;
             box-shadow: 0 8px 16px rgba(0,0,0,0.1);
             border: 3px solid #ffb6c1;
-            display: none; /* 預設隱藏，由 JS 控制顯示 */
+            display: none; 
             position: relative;
         }
         h1 { color: #ff69b4; margin-bottom: 10px; }
@@ -111,20 +111,20 @@
             position: relative;
             width: 100%;
             height: 250px;
-            background-color: #e0f8e0;
-            border: 3px dashed #32cd32;
+            background-color: #e6f2ff; /* 改為天空藍色背景 */
+            border: 3px dashed #87ceeb;
             border-radius: 15px;
             overflow: hidden;
             margin-top: 20px;
         }
-        .weed-target {
+        .balloon-target {
             position: absolute;
             font-size: 35px;
             cursor: pointer;
             user-select: none;
             transition: transform 0.1s;
         }
-        .weed-target:active { transform: scale(0.8); }
+        .balloon-target:active { transform: scale(0.8); }
     </style>
 </head>
 <body>
@@ -173,9 +173,9 @@
 </div>
 
 <div class="game-container" id="mini-game-screen">
-    <h2 style="color: #32cd32;">🌿 拔草討伐時間！ 🌿</h2>
-    <p>兔哥發現了很多雜草和怪物！</p>
-    <p style="font-weight: bold; color: #ff4500;">限時 30 秒！快點擊牠們賺取額外金幣！</p>
+    <h2 style="color: #32cd32;">🎈 歡樂爆波波時間！ 🎈</h2>
+    <p>小八貓準備咗好多彩色氣球！</p>
+    <p style="font-weight: bold; color: #ff4500;">限時 30 秒！快點擊篤爆佢哋賺取金幣！</p>
     <p style="font-size: 1.2em;">剩餘時間：<span id="timer" style="color: red; font-weight: bold;">30</span> 秒 | 賺取：<span id="mini-game-coins" style="color: #ff8c00; font-weight: bold;">0</span></p>
     
     <div id="game-area"></div>
@@ -201,7 +201,7 @@
 </div>
 
 <div class="game-container" id="leaderboard-screen">
-    <h2 style="color: #ffd700;">🏆 討伐英雄榜 🏆</h2>
+    <h2 style="color: #ffd700;">🏆 科學討伐英雄榜 🏆</h2>
     <table>
         <thead>
             <tr><th>排名</th><th>玩家姓名</th><th>💰 金幣</th><th>答對</th></tr>
@@ -898,6 +898,9 @@ const allQuestions = [
     }
 ];
 
+    // ✅ 分開兩科的 Local Storage 名稱，防止污染！
+    const LOCAL_STORAGE_KEY = 'chiikawa_sci_data_';
+
     let currentPlayer = "";
     let currentQuestionIndex = 0;
     let coins = 0;
@@ -929,7 +932,7 @@ const allQuestions = [
         // 1. 嘗試載入本地進度
         loadPlayerProgress();
 
-        // 2. 嘗試從 JSONBin 雲端同步最高金幣 (防止換機或洗機時金幣變 0)
+        // 2. 嘗試從 JSONBin 雲端同步最高金幣
         try {
             let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
                 headers: { 'X-Master-Key': API_KEY }
@@ -937,20 +940,17 @@ const allQuestions = [
             let result = await response.json();
             let boardData = result.record || [];
             
-            // 尋找雲端上有沒有這個玩家的記錄
             let cloudPlayer = boardData.find(p => p.name === currentPlayer);
             
-            // 如果雲端的金幣比本地多（例如他在另一部機玩過），就用雲端的高分覆蓋本地
             if (cloudPlayer && cloudPlayer.coins > coins) {
                 coins = cloudPlayer.coins;
                 correctCount = cloudPlayer.correctCount;
-                saveProgress(); // 更新本地儲存
+                saveProgress(); 
             }
         } catch(e) {
             console.log("雲端同步延遲，使用本地數據");
         }
 
-        // 恢復登入畫面原狀並進入遊戲
         let loadingText = document.getElementById('loading-text');
         if(loadingText) loadingText.remove();
         showScreen('main-game');
@@ -964,7 +964,8 @@ const allQuestions = [
     }
 
     function loadPlayerProgress() {
-        const savedData = localStorage.getItem('chiikawa_data_' + currentPlayer);
+        // ✅ 使用專屬的 Local Storage Key
+        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY + currentPlayer);
         if (savedData) {
             const data = JSON.parse(savedData);
             currentQuestionIndex = data.currentQuestionIndex || 0;
@@ -979,21 +980,20 @@ const allQuestions = [
 
     function saveProgress() {
         const data = { currentQuestionIndex, coins, correctCount, wrongQuestions };
-        localStorage.setItem('chiikawa_data_' + currentPlayer, JSON.stringify(data));
+        // ✅ 使用專屬的 Local Storage Key
+        localStorage.setItem(LOCAL_STORAGE_KEY + currentPlayer, JSON.stringify(data));
         updateLeaderboardData();
     }
 
     // 1. 將分數上傳到 JSONBin.io
     async function updateLeaderboardData() {
         try {
-            // 第一步：先從雲端下載最新的全班排行榜
             let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
                 headers: { 'X-Master-Key': API_KEY }
             });
             let result = await response.json();
             let boardData = result.record || [];
 
-            // 第二步：更新當前玩家的分數
             let playerIndex = boardData.findIndex(p => p.name === currentPlayer);
             if (playerIndex !== -1) {
                 boardData[playerIndex].coins = coins;
@@ -1002,7 +1002,6 @@ const allQuestions = [
                 boardData.push({ name: currentPlayer, coins: coins, correctCount: correctCount });
             }
 
-            // 第三步：將更新後的排行榜重新上傳到雲端
             await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                 method: 'PUT',
                 headers: {
@@ -1020,7 +1019,7 @@ const allQuestions = [
     // 2. 從 JSONBin.io 下載全班排行榜
     async function renderLeaderboard() {
         const tbody = document.getElementById('leaderboard-body');
-        tbody.innerHTML = '<tr><td colspan="4">努力載入全班排名中... 🐰</td></tr>'; // 載入提示
+        tbody.innerHTML = '<tr><td colspan="4">努力載入全班排名中... 🐰</td></tr>';
 
         try {
             let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
@@ -1029,7 +1028,6 @@ const allQuestions = [
             let result = await response.json();
             let boardData = result.record || [];
 
-            // 根據金幣從高到低排序
             boardData.sort((a, b) => b.coins - a.coins);
             
             tbody.innerHTML = '';
@@ -1048,7 +1046,6 @@ const allQuestions = [
                 else if (index === 1) { rankClass = 'rank-2'; rankText = '🥈 2'; }
                 else if (index === 2) { rankClass = 'rank-3'; rankText = '🥉 3'; }
 
-                // 如果是當前玩家，Highlight 顯示
                 if (player.name === currentPlayer) tr.style.backgroundColor = '#fffacd';
 
                 tr.innerHTML = `
@@ -1072,7 +1069,6 @@ const allQuestions = [
     }
 
     function loadQuestion() {
-        // 如果已經做完所有題目，顯示「再次挑戰」按鈕
         if (currentQuestionIndex >= allQuestions.length) {
             document.getElementById('quiz-area').innerHTML = `
                 <h2 style="color: #ff69b4;">🏆 恭喜你！完成所有題目！</h2>
@@ -1117,15 +1113,10 @@ const allQuestions = [
         updateUI();
     }
 
-    // 新增的「無限重玩」功能 (已修復保留錯題及卡死問題)
     function replayGame() {
-        // 1. 重設題號，保留金幣
         currentQuestionIndex = 0;
         selectedOptions = [];
         
-        // ⚠️ 已經移除了 wrongQuestions = []; 這樣就能永遠保留錯題本！
-
-        // 2. 修復卡死 Bug：重新建立被「恭喜畫面」覆蓋了的題目 HTML 結構
         document.getElementById('quiz-area').innerHTML = `
             <div class="question" id="question-text">載入題目中...</div>
             <div class="options" id="options-container"></div>
@@ -1138,7 +1129,6 @@ const allQuestions = [
             <div id="feedback"></div>
         `;
         
-        // 3. 儲存進度並重新載入第一題
         saveProgress(); 
         loadQuestion(); 
     }
@@ -1210,16 +1200,15 @@ const allQuestions = [
         hintEl.style.display = hintEl.style.display === 'none' ? 'block' : 'none';
     }
 
-    // ========== 核心過關與小遊戲邏輯 ========== //
+    // ========== 🎈 爆波波小遊戲 ========== //
 
     function nextQuestion() {
         currentQuestionIndex++;
         
-        // 檢查是否剛好完成 20 題 (一關)
         if (currentQuestionIndex > 0 && currentQuestionIndex % 20 === 0 && currentQuestionIndex < allQuestions.length) {
-            startMiniGame(); // 進入除草小遊戲
+            startMiniGame(); 
         } else {
-            loadQuestion(); // 繼續一般題目
+            loadQuestion(); 
         }
     }
 
@@ -1230,12 +1219,11 @@ const allQuestions = [
         
         document.getElementById('timer').innerText = timeLeft;
         document.getElementById('mini-game-coins').innerText = currentMiniGameCoins;
-        document.getElementById('game-area').innerHTML = ''; // 清空場地
+        document.getElementById('game-area').innerHTML = ''; 
 
-        // 每 0.6 秒彈出一棵草/怪物
-        weedInterval = setInterval(spawnWeed, 600);
+        // 生成氣球
+        weedInterval = setInterval(spawnBalloon, 500); 
         
-        // 倒數計時
         timerInterval = setInterval(() => {
             timeLeft--;
             document.getElementById('timer').innerText = timeLeft;
@@ -1245,37 +1233,39 @@ const allQuestions = [
         }, 1000);
     }
 
-    function spawnWeed() {
+    function spawnBalloon() {
         const area = document.getElementById('game-area');
-        const weed = document.createElement('div');
+        const balloon = document.createElement('div');
         
-        // 隨機出現草 (🌿) 或 怪物 (👾)
-        const isMonster = Math.random() > 0.8; 
-        weed.innerText = isMonster ? '👾' : '🌿';
-        weed.className = 'weed-target';
+        // 隨機顏色氣球
+        const colors = ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        balloon.innerText = randomColor;
+        balloon.className = 'balloon-target';
         
         // 隨機位置
-        weed.style.left = Math.random() * 85 + '%';
-        weed.style.top = Math.random() * 80 + '%';
+        balloon.style.left = Math.random() * 80 + '%';
+        balloon.style.top = Math.random() * 70 + '%';
         
         // 點擊事件
-        weed.onclick = function() {
-            let reward = isMonster ? 5 : 2; // 怪物值 5 金幣，草值 2 金幣
+        balloon.onclick = function() {
+            let reward = 2; // 每個氣球 2 金幣
             currentMiniGameCoins += reward;
-            coins += reward; // 增加全球金幣
+            coins += reward;
             document.getElementById('mini-game-coins').innerText = currentMiniGameCoins;
             
-            weed.innerText = '💥'; // 爆炸效果
-            weed.style.pointerEvents = 'none'; // 避免重複點擊
-            setTimeout(() => weed.remove(), 200);
+            balloon.innerText = '💥'; // 爆開效果
+            balloon.style.pointerEvents = 'none'; 
+            setTimeout(() => balloon.remove(), 200);
         };
         
-        area.appendChild(weed);
+        area.appendChild(balloon);
         
-        // 如果 1.5 秒內無人點擊，自動消失
+        // 氣球飄走（消失）
         setTimeout(() => {
-            if(weed.parentElement) weed.remove();
-        }, 1500);
+            if(balloon.parentElement) balloon.remove();
+        }, 1200);
     }
 
     function endMiniGame() {
@@ -1283,7 +1273,7 @@ const allQuestions = [
         clearInterval(timerInterval);
         document.getElementById('game-area').innerHTML = '';
         
-        alert(`⏰ 時間到！\n兔哥幫你喺草叢中討伐成功，額外賺到 ${currentMiniGameCoins} 個金幣！`);
+        alert(`🎈 時間到！\n你篤爆咗好多彩色氣球，額外賺到 ${currentMiniGameCoins} 個金幣！`);
         saveProgress();
         showLevelCompleteScreen();
     }
@@ -1317,20 +1307,18 @@ const allQuestions = [
         });
     }
 
-    // 新增：重設個人進度功能 (方便老師測試)
+    // 新增：重設個人進度功能
     function resetMyProgress() {
         if(confirm("警告：確定要清除所有進度，重新由第一關開始嗎？\n（你的金幣和錯題本也會清零喔！）")) {
-            // 清除瀏覽器中這個玩家的紀錄
-            localStorage.removeItem('chiikawa_data_' + currentPlayer);
+            // ✅ 清除專屬的 Local Storage Key
+            localStorage.removeItem(LOCAL_STORAGE_KEY + currentPlayer);
             
-            // 將所有分數重設為 0
             currentQuestionIndex = 0;
             coins = 0;
             correctCount = 0;
             wrongQuestions = [];
             selectedOptions = [];
             
-            // 儲存並重新載入畫面
             saveProgress(); 
             loadQuestion();
         }
